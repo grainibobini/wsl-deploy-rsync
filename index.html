@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Бегающие котята</title>
+    <title>Элитная симуляция котят | Professional cat simulation</title>
     <style>
         * {
             margin: 0;
@@ -13,450 +13,633 @@
         }
 
         body {
-            background: linear-gradient(145deg, #2e5f4b 0%, #1d3e31 100%);
+            background: linear-gradient(145deg, #1e3c2c, #0f281c);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Segoe UI', 'Quicksand', system-ui, sans-serif;
+            font-family: 'Segoe UI', 'Quicksand', system-ui, -apple-system, 'Montserrat', sans-serif;
+            padding: 20px;
         }
 
-        .game-container {
-            background: #d9b382;
-            padding: 20px;
+        .sim-container {
+            background: #d9ae6c;
             border-radius: 48px;
-            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+            padding: 20px;
+            box-shadow: 0 30px 40px rgba(0, 0, 0, 0.5), inset 0 1px 3px rgba(255, 255, 255, 0.4);
         }
 
         canvas {
             display: block;
             margin: 0 auto;
             border-radius: 32px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            background-color: #f8e4c9;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            cursor: crosshair;
+            background: #f6eedf;
         }
 
-        .info {
-            text-align: center;
-            margin-top: 18px;
-            color: #f9efcf;
-            text-shadow: 2px 2px 0 #5a3e1b;
-            font-weight: bold;
-            font-size: 1.2rem;
+        .dashboard {
+            margin-top: 20px;
             display: flex;
-            justify-content: center;
-            gap: 2rem;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            padding: 12px 20px;
+            border-radius: 60px;
+            color: #fffaec;
+            font-weight: bold;
         }
 
-        .info span {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 6px 14px;
-            border-radius: 60px;
-            backdrop-filter: blur(4px);
+        .stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: #2d2b1f80;
+            padding: 5px 16px;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
         }
 
         button {
-            background: #ffcf7a;
+            background: #ffcd7e;
             border: none;
-            font-size: 1rem;
-            font-weight: bold;
-            padding: 6px 16px;
-            border-radius: 40px;
-            margin-left: 15px;
-            cursor: pointer;
             font-family: inherit;
-            transition: 0.2s;
-            box-shadow: 0 3px 0 #a4652b;
+            font-weight: bold;
+            padding: 6px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.1s linear;
+            font-size: 0.9rem;
+            box-shadow: 0 3px 0 #9b6a2c;
+            color: #2c2416;
         }
 
         button:active {
             transform: translateY(2px);
-            box-shadow: 0 1px 0 #a4652b;
+            box-shadow: 0 1px 0 #9b6a2c;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #f0b27a;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            color: #262216;
         }
     </style>
 </head>
 <body>
 <div>
-    <div class="game-container">
-        <canvas id="catCanvas" width="1000" height="550" style="width:1000px; height:550px"></canvas>
-        <div class="info">
-            <span>🐾 Котят: <span id="catCount">3</span></span>
-            <span>🧶 По комнате</span>
-            <button id="addCatBtn">+ Добавить котёнка</button>
+    <div class="sim-container">
+        <canvas id="catCanvas" width="1200" height="650" style="width:1200px; height:650px"></canvas>
+        <div class="dashboard">
+            <div class="stats">
+                <div class="stat">🐱 Котят: <span id="catCount">0</span></div>
+                <div class="stat">🧶 Клубков: <span id="yarnCount">3</span></div>
+                <div class="stat">⚡ Активность: <span id="activityLevel">92%</span></div>
+            </div>
+            <div class="badge">⭐ ПРОФИ | Продвинутое поведение</div>
+            <button id="spawnCatBtn">+ Новый котёнок</button>
         </div>
     </div>
 </div>
 
 <script>
     (function(){
-        // ------ НАСТРОЙКИ ------
+        // ---------- ИНЖИНИРИНГ СИМУЛЯЦИИ ----------
         const canvas = document.getElementById('catCanvas');
         const ctx = canvas.getContext('2d');
-        
-        // Размеры комнаты (границы, с учётом отступов от краёв)
-        const bounds = {
-            left: 40,
-            right: canvas.width - 40,
-            top: 50,
-            bottom: canvas.height - 50
+
+        // Размеры "комнаты" (границы с отступами для красоты)
+        const room = {
+            left: 60,
+            right: canvas.width - 60,
+            top: 65,
+            bottom: canvas.height - 65
         };
 
-        // Массив котят
-        let kittens = [];
-        
-        // Вспомогательные функции
+        // Глобальные объекты
+        let cats = [];
+        let yarnBalls = [];
+        let mouseX = room.left + 200, mouseY = room.top + 200;   // виртуальный курсор для слежения зрачков
+        let frames = 0;
+
+        // ---- Вспомогательные функции ----
         function random(min, max) {
             return min + Math.random() * (max - min);
         }
 
-        // ------------------- КЛАСС КОТЁНКА -------------------
-        class Kitten {
-            constructor(x, y, colorVariant = null) {
+        function clamp(value, min, max) {
+            return Math.min(max, Math.max(min, value));
+        }
+
+        // Расстояние между точками
+        function distance(x1, y1, x2, y2) {
+            const dx = x1 - x2, dy = y1 - y2;
+            return Math.hypot(dx, dy);
+        }
+
+        // ---- Класс Клубка ниток (интерактивный, кошки могут его катать) ----
+        class YarnBall {
+            constructor(x, y) {
                 this.x = x;
                 this.y = y;
-                // случайная скорость 0.5 .. 2.2 пикселя за кадр (плавно)
-                this.vx = random(-1.8, 1.8);
-                this.vy = random(-1.8, 1.8);
-                // если скорость почти ноль — докрутим
-                if (Math.abs(this.vx) < 0.5) this.vx += (Math.random() - 0.5) * 1.2;
-                if (Math.abs(this.vy) < 0.5) this.vy += (Math.random() - 0.5) * 1.2;
-                
-                // размер котёнка (тело ~ 28px)
-                this.size = 28;
-                this.earSize = 14;
-                
-                // цвет шерсти (рыжий, серый, чёрный, бежевый)
-                const variants = [
-                    '#E67E22', // рыжий
-                    '#7F8C8D', // серый
-                    '#3E2723', // тёмно-коричневый
-                    '#F5CBA7', // светлый
-                    '#C4450C'  // оранжевый
-                ];
-                if(colorVariant !== null) {
-                    this.furColor = variants[colorVariant % variants.length];
+                this.vx = random(-0.6, 0.6);
+                this.vy = random(-0.6, 0.6);
+                this.radius = 12;
+                this.color = `hsl(${random(20, 40)}, 70%, 55%)`;
+                this.beingPlayed = false;
+            }
+
+            update() {
+                // простое трение
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // отскок от стен комнаты
+                if (this.x - this.radius < room.left) {
+                    this.x = room.left + this.radius;
+                    this.vx = Math.abs(this.vx) * 0.8;
+                }
+                if (this.x + this.radius > room.right) {
+                    this.x = room.right - this.radius;
+                    this.vx = -Math.abs(this.vx) * 0.8;
+                }
+                if (this.y - this.radius < room.top) {
+                    this.y = room.top + this.radius;
+                    this.vy = Math.abs(this.vy) * 0.8;
+                }
+                if (this.y + this.radius > room.bottom) {
+                    this.y = room.bottom - this.radius;
+                    this.vy = -Math.abs(this.vy) * 0.8;
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = "rgba(0,0,0,0.3)";
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = "#875e2c";
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                // текстура ниток
+                ctx.beginPath();
+                ctx.arc(this.x - 3, this.y - 2, 3, 0, Math.PI * 2);
+                ctx.fillStyle = "#d9903a";
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.x + 4, this.y + 2, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // взаимодействие с котом (кот толкает клубок)
+            applyKick(kx, ky, force = 1.2) {
+                const dx = this.x - kx;
+                const dy = this.y - ky;
+                const dist = Math.hypot(dx, dy);
+                if (dist < 0.1) return;
+                const angle = Math.atan2(dy, dx);
+                const power = Math.min(5.5, force * 2.4 / (dist * 0.3));
+                this.vx += Math.cos(angle) * power * 0.6;
+                this.vy += Math.sin(angle) * power * 0.6;
+                // ограничение скорости
+                const maxSpeed = 6;
+                if (Math.abs(this.vx) > maxSpeed) this.vx = this.vx > 0 ? maxSpeed : -maxSpeed;
+                if (Math.abs(this.vy) > maxSpeed) this.vy = this.vy > 0 ? maxSpeed : -maxSpeed;
+            }
+        }
+
+        // ---- Класс ПРОДВИНУТЫЙ Кот (индивидуальность, сложное поведение) ----
+        class SmartCat {
+            constructor(id, x, y, personality = null) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.vx = random(-1.2, 1.2);
+                this.vy = random(-1.2, 1.2);
+                this.size = 32;      // радиус тела
+                // Характер: активность, любопытство, смелость
+                if (personality) {
+                    this.activity = personality.activity;
+                    this.curiosity = personality.curiosity;
+                    this.boldness = personality.boldness;
                 } else {
-                    this.furColor = variants[Math.floor(Math.random() * variants.length)];
+                    this.activity = random(0.5, 1.5);   // влияет на скорость и частоту смены желаний
+                    this.curiosity = random(0.4, 1.6);
+                    this.boldness = random(0.3, 1.4);
+                }
+                // окрас шерсти
+                this.fur = `hsl(${random(20, 45)}, ${random(55, 80)}%, ${random(45, 65)}%)`;
+                this.secondFur = `hsl(${random(25, 50)}, 65%, 52%)`;
+                this.eyeColor = `hsl(${random(55, 75)}, 85%, 48%)`;
+
+                // состояние поведения
+                this.state = "wander";    // wander, chase_yarn, rest, follow_mouse
+                this.stateTimer = 0;
+                this.targetYarn = null;
+                this.restAngle = 0;
+                this.tailWag = 0;
+                this.blink = 0;
+                this.earTwitch = 0;
+                // параметры усталости (энергия)
+                this.energy = random(0.6, 1.0);
+                
+                // анимация хвоста
+                this.tailPhase = random(0, Math.PI * 2);
+            }
+
+            update(catsList, yarns, mouseScreenX, mouseScreenY) {
+                // 1) Энергия медленно восстанавливается или падает в зависимости от активности
+                if (this.state === "rest") this.energy += 0.003;
+                else this.energy -= 0.001;
+                this.energy = clamp(this.energy, 0.2, 1.0);
+                
+                // 2) Принятие решений (конечный автомат) с учётом характера
+                this.decideState(yarns, mouseScreenX, mouseScreenY);
+                
+                // 3) Вычисление желаемого ускорения (steering)
+                let ax = 0, ay = 0;
+                const maxForce = 0.4 * this.activity;
+                
+                switch(this.state) {
+                    case "wander":
+                        // случайное блуждание с поворотом (алгоритм wander)
+                        const wanderAngle = frames * 0.02 * this.activity + this.id;
+                        const wanderForce = 0.25 * this.activity;
+                        ax += Math.cos(wanderAngle) * wanderForce;
+                        ay += Math.sin(wanderAngle) * wanderForce;
+                        // иногда садится отдохнуть
+                        break;
+                    case "chase_yarn":
+                        if (this.targetYarn && yarns.includes(this.targetYarn)) {
+                            const dx = this.targetYarn.x - this.x;
+                            const dy = this.targetYarn.y - this.y;
+                            const dist = Math.hypot(dx, dy);
+                            if (dist > 5) {
+                                const steerX = dx / dist * 0.8 * this.curiosity;
+                                const steerY = dy / dist * 0.8 * this.curiosity;
+                                ax += steerX;
+                                ay += steerY;
+                            }
+                            // если подошёл близко — толкает клубок
+                            if (dist < 28) {
+                                this.targetYarn.applyKick(this.x, this.y, 1.4 * this.activity);
+                                this.state = "wander";
+                                this.stateTimer = 30;
+                            }
+                        } else {
+                            this.state = "wander";
+                        }
+                        break;
+                    case "follow_mouse":
+                        const toMouseX = mouseScreenX - this.x;
+                        const toMouseY = mouseScreenY - this.y;
+                        const distToMouse = Math.hypot(toMouseX, toMouseY);
+                        if (distToMouse > 15 && this.boldness > 0.4) {
+                            const steerX = toMouseX / distToMouse * 0.65 * this.curiosity;
+                            const steerY = toMouseY / distToMouse * 0.65 * this.curiosity;
+                            ax += steerX;
+                            ay += steerY;
+                        }
+                        if (distToMouse < 50 && Math.random() < 0.02) this.state = "wander";
+                        break;
+                    case "rest":
+                        // сидит на месте, тормозит
+                        ax = -this.vx * 0.05;
+                        ay = -this.vy * 0.05;
+                        break;
                 }
                 
-                // цвет глаз
-                this.eyeColor = '#2C3E50';
-                // усталость/игривость (для анимации моргания)
-                this.blinkTimer = Math.random() * 100;
-                this.tailAngle = 0;
-                this.tailDirection = 1;
-            }
-            
-            // обновление позиции и поведения
-            update() {
-                // движение
+                // 4) Избегание других кошек (социальная дистанция)
+                for (let other of catsList) {
+                    if (other === this) continue;
+                    const dx = this.x - other.x;
+                    const dy = this.y - other.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < 45 && dist > 0.1) {
+                        const avoid = 0.35 / (dist * 0.05);
+                        ax += dx / dist * avoid;
+                        ay += dy / dist * avoid;
+                    }
+                }
+                
+                // 5) Избегание стен (сила отталкивания)
+                const margin = 25;
+                if (this.x - this.size/2 < room.left + 8) ax += 0.45;
+                if (this.x + this.size/2 > room.right - 8) ax -= 0.45;
+                if (this.y - this.size/2 < room.top + 8) ay += 0.45;
+                if (this.y + this.size/2 > room.bottom - 8) ay -= 0.45;
+                
+                // 6) Применение физики и скорости с ограничением
+                this.vx += ax * 0.3 * this.activity;
+                this.vy += ay * 0.3 * this.activity;
+                const maxSpeed = 2.4 * this.activity;
+                if (Math.abs(this.vx) > maxSpeed) this.vx = this.vx > 0 ? maxSpeed : -maxSpeed;
+                if (Math.abs(this.vy) > maxSpeed) this.vy = this.vy > 0 ? maxSpeed : -maxSpeed;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
                 this.x += this.vx;
                 this.y += this.vy;
                 
-                // отскок от границ + небольшой случайный "поворот" при столкновении, чтобы котята не застревали
-                if (this.x - this.size/2 < bounds.left) {
-                    this.x = bounds.left + this.size/2;
-                    this.vx = Math.abs(this.vx) * 0.9 + random(0.3, 0.9);
-                    this.vy += random(-0.4, 0.4);
-                }
-                if (this.x + this.size/2 > bounds.right) {
-                    this.x = bounds.right - this.size/2;
-                    this.vx = -Math.abs(this.vx) * 0.9 - random(0.2, 0.7);
-                    this.vy += random(-0.4, 0.4);
-                }
-                if (this.y - this.size/2 < bounds.top) {
-                    this.y = bounds.top + this.size/2;
-                    this.vy = Math.abs(this.vy) * 0.9 + random(0.3, 0.9);
-                    this.vx += random(-0.4, 0.4);
-                }
-                if (this.y + this.size/2 > bounds.bottom) {
-                    this.y = bounds.bottom - this.size/2;
-                    this.vy = -Math.abs(this.vy) * 0.9 - random(0.2, 0.7);
-                    this.vx += random(-0.4, 0.4);
-                }
+                // жёсткие границы
+                this.x = clamp(this.x, room.left + this.size/2, room.right - this.size/2);
+                this.y = clamp(this.y, room.top + this.size/2, room.bottom - this.size/2);
                 
-                // ограничение максимальной скорости (чтобы не убежали)
-                let maxSpeed = 2.9;
-                if (Math.abs(this.vx) > maxSpeed) this.vx = this.vx > 0 ? maxSpeed : -maxSpeed;
-                if (Math.abs(this.vy) > maxSpeed) this.vy = this.vy > 0 ? maxSpeed : -maxSpeed;
+                // анимационные счетчики
+                this.tailWag = Math.sin(frames * 0.06 + this.tailPhase) * 0.8;
+                this.blink = (Math.sin(frames * 0.02) > 0.95) ? 1 : 0;
+                this.earTwitch = Math.sin(frames * 0.1 + this.id) * 0.3;
                 
-                // небольшая "охота" за случайным изменением курса (игривость)
-                if (Math.random() < 0.02) {
-                    this.vx += random(-0.6, 0.6);
-                    this.vy += random(-0.6, 0.6);
-                }
-                
-                // анимация хвоста (плавное виляние)
-                this.tailAngle += 0.07 * this.tailDirection;
-                if (this.tailAngle > 0.8) this.tailDirection = -1;
-                if (this.tailAngle < -0.6) this.tailDirection = 1;
-                
-                // моргание
-                this.blinkTimer++;
+                if (this.stateTimer > 0) this.stateTimer--;
             }
             
-            // рисуем котёнка (векторный арт)
-            draw(ctx) {
+            decideState(yarns, mouseX, mouseY) {
+                // периодическая смена состояний, плюс реакция на внешние стимулы
+                if (this.stateTimer <= 0 && Math.random() < 0.008 * this.activity) {
+                    // шанс погнаться за ближайшим клубком
+                    let closestYarn = null;
+                    let minDist = Infinity;
+                    for (let y of yarns) {
+                        const d = distance(this.x, this.y, y.x, y.y);
+                        if (d < minDist && d < 130 * this.curiosity) {
+                            minDist = d;
+                            closestYarn = y;
+                        }
+                    }
+                    if (closestYarn && Math.random() < 0.45 * this.curiosity) {
+                        this.state = "chase_yarn";
+                        this.targetYarn = closestYarn;
+                        this.stateTimer = 120;
+                        return;
+                    }
+                    // реакция на мышь (если курсор близко и кот смелый)
+                    const distMouse = distance(this.x, this.y, mouseX, mouseY);
+                    if (distMouse < 90 && this.boldness > 0.6 && Math.random() < 0.4) {
+                        this.state = "follow_mouse";
+                        this.stateTimer = 100;
+                        return;
+                    }
+                    // смена на отдых если энергия низкая
+                    if (this.energy < 0.4 && Math.random() < 0.2) {
+                        this.state = "rest";
+                        this.stateTimer = 140;
+                        return;
+                    }
+                    // иначе блуждание
+                    this.state = "wander";
+                    this.stateTimer = random(40, 150);
+                }
+            }
+            
+            // Профессиональная отрисовка кота (анатомия, тени, детали)
+            draw(ctx, mouseGlobalX, mouseGlobalY) {
                 ctx.save();
-                ctx.shadowBlur = 0; // для чёткости
-                // для поворота в сторону движения? можно слегка наклонять, но не обязательно
-                const direction = this.vx > 0 ? 1 : -1;
+                ctx.shadowBlur = 6;
+                ctx.shadowColor = "rgba(0,0,0,0.25)";
                 // тело (овал)
                 ctx.beginPath();
                 ctx.ellipse(this.x, this.y, this.size*0.85, this.size*0.75, 0, 0, Math.PI*2);
-                ctx.fillStyle = this.furColor;
+                ctx.fillStyle = this.fur;
                 ctx.fill();
-                ctx.strokeStyle = '#5D3A1A';
+                ctx.strokeStyle = "#764e2a";
                 ctx.lineWidth = 1.2;
                 ctx.stroke();
-                
-                // уши (треугольники)
-                ctx.fillStyle = this.furColor;
-                // левое ухо
+                // грудка
                 ctx.beginPath();
-                ctx.moveTo(this.x - this.size*0.65, this.y - this.size*0.55);
-                ctx.lineTo(this.x - this.size*0.25, this.y - this.size*0.85);
-                ctx.lineTo(this.x - this.size*0.1, this.y - this.size*0.55);
+                ctx.ellipse(this.x - 4, this.y + 6, 12, 10, 0, 0, Math.PI*2);
+                ctx.fillStyle = this.secondFur;
                 ctx.fill();
-                ctx.stroke();
-                // правое ухо
+                // уши
+                ctx.fillStyle = this.fur;
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.size*0.65, this.y - this.size*0.55);
-                ctx.lineTo(this.x + this.size*0.25, this.y - this.size*0.85);
-                ctx.lineTo(this.x + this.size*0.1, this.y - this.size*0.55);
-                ctx.fill();
-                ctx.stroke();
-                
-                // внутренняя часть ушей (розовая)
-                ctx.fillStyle = '#FBC5B5';
-                ctx.beginPath();
-                ctx.moveTo(this.x - this.size*0.55, this.y - this.size*0.65);
-                ctx.lineTo(this.x - this.size*0.3, this.y - this.size*0.78);
-                ctx.lineTo(this.x - this.size*0.2, this.y - this.size*0.62);
+                ctx.moveTo(this.x - 21, this.y - 18);
+                ctx.lineTo(this.x - 8, this.y - 32);
+                ctx.lineTo(this.x + 2, this.y - 20);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.moveTo(this.x + this.size*0.55, this.y - this.size*0.65);
-                ctx.lineTo(this.x + this.size*0.3, this.y - this.size*0.78);
-                ctx.lineTo(this.x + this.size*0.2, this.y - this.size*0.62);
+                ctx.moveTo(this.x + 21, this.y - 18);
+                ctx.lineTo(this.x + 8, this.y - 32);
+                ctx.lineTo(this.x - 2, this.y - 20);
                 ctx.fill();
-                
-                // глаза (с учётом моргания)
-                let eyeOpen = true;
-                if (this.blinkTimer % 80 < 4) eyeOpen = false; // моргание каждые ~80 кадров
-                
-                ctx.fillStyle = '#FFFFFF';
+                // внутренние уши
+                ctx.fillStyle = "#f3bc9c";
                 ctx.beginPath();
-                ctx.ellipse(this.x - this.size*0.35, this.y - this.size*0.1, 5, eyeOpen ? 6 : 1.5, 0, 0, Math.PI*2);
+                ctx.moveTo(this.x - 16, this.y - 21);
+                ctx.lineTo(this.x - 9, this.y - 29);
+                ctx.lineTo(this.x - 4, this.y - 22);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.ellipse(this.x + this.size*0.35, this.y - this.size*0.1, 5, eyeOpen ? 6 : 1.5, 0, 0, Math.PI*2);
+                ctx.moveTo(this.x + 16, this.y - 21);
+                ctx.lineTo(this.x + 9, this.y - 29);
+                ctx.lineTo(this.x + 4, this.y - 22);
                 ctx.fill();
                 
-                // зрачки (смотрят в сторону движения)
+                // глаза с умным взглядом (следят за курсором)
+                const angleToMouse = Math.atan2(mouseGlobalY - this.y, mouseGlobalX - this.x);
+                const pupilOffsetX = Math.cos(angleToMouse) * 3.5;
+                const pupilOffsetY = Math.sin(angleToMouse) * 2.8;
+                ctx.fillStyle = "#fffdf0";
+                ctx.beginPath();
+                ctx.ellipse(this.x - 11, this.y - 4, 6, (this.blink ? 1.5 : 7), 0, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(this.x + 11, this.y - 4, 6, (this.blink ? 1.5 : 7), 0, 0, Math.PI*2);
+                ctx.fill();
                 ctx.fillStyle = this.eyeColor;
-                let pupilShiftX = Math.min(Math.max(this.vx * 1.2, -3), 3);
-                let pupilShiftY = Math.min(Math.max(this.vy * 0.8, -2), 2);
                 ctx.beginPath();
-                ctx.arc(this.x - this.size*0.35 + pupilShiftX*0.7, this.y - this.size*0.1 + pupilShiftY, 2.8, 0, Math.PI*2);
+                ctx.arc(this.x - 11 + pupilOffsetX*0.7, this.y - 4 + pupilOffsetY*0.7, 3.2, 0, Math.PI*2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(this.x + this.size*0.35 + pupilShiftX*0.7, this.y - this.size*0.1 + pupilShiftY, 2.8, 0, Math.PI*2);
+                ctx.arc(this.x + 11 + pupilOffsetX*0.7, this.y - 4 + pupilOffsetY*0.7, 3.2, 0, Math.PI*2);
                 ctx.fill();
                 // блики
-                ctx.fillStyle = 'white';
+                ctx.fillStyle = "white";
                 ctx.beginPath();
-                ctx.arc(this.x - this.size*0.4, this.y - this.size*0.15, 1.2, 0, Math.PI*2);
+                ctx.arc(this.x - 14, this.y - 7, 1.5, 0, Math.PI*2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(this.x + this.size*0.3, this.y - this.size*0.15, 1.2, 0, Math.PI*2);
+                ctx.arc(this.x + 8, this.y - 7, 1.5, 0, Math.PI*2);
                 ctx.fill();
                 
-                // носик (розовый треугольник)
-                ctx.fillStyle = '#FF9AA2';
+                // носик и рот
+                ctx.fillStyle = "#ff8d85";
                 ctx.beginPath();
-                ctx.moveTo(this.x, this.y + 5);
+                ctx.moveTo(this.x, this.y + 4);
                 ctx.lineTo(this.x - 3, this.y + 10);
                 ctx.lineTo(this.x + 3, this.y + 10);
                 ctx.fill();
-                // усики (по 2 линии)
                 ctx.beginPath();
-                ctx.strokeStyle = '#5A3E2B';
+                ctx.moveTo(this.x - 6, this.y + 8);
+                ctx.quadraticCurveTo(this.x, this.y + 13, this.x + 6, this.y + 8);
                 ctx.lineWidth = 1;
-                ctx.moveTo(this.x - 12, this.y + 2);
-                ctx.lineTo(this.x - 25, this.y - 2);
-                ctx.moveTo(this.x - 12, this.y + 6);
-                ctx.lineTo(this.x - 27, this.y + 8);
-                ctx.moveTo(this.x + 12, this.y + 2);
-                ctx.lineTo(this.x + 25, this.y - 2);
-                ctx.moveTo(this.x + 12, this.y + 6);
-                ctx.lineTo(this.x + 27, this.y + 8);
                 ctx.stroke();
                 
-                // хвост (виляющий)
+                // усы (длинные)
                 ctx.beginPath();
-                ctx.strokeStyle = this.furColor;
-                ctx.lineWidth = 7;
-                ctx.lineCap = 'round';
-                let tailX = this.x - this.size*0.9;
-                let tailY = this.y + this.size*0.3;
-                let angle = this.tailAngle;
-                ctx.moveTo(tailX, tailY);
-                ctx.quadraticCurveTo(tailX - 12 + angle*6, tailY + 6 + angle*4, tailX - 22 + angle*10, tailY + 2 + angle*3);
+                ctx.moveTo(this.x - 14, this.y + 2);
+                ctx.lineTo(this.x - 32, this.y - 2);
+                ctx.moveTo(this.x - 13, this.y + 7);
+                ctx.lineTo(this.x - 31, this.y + 9);
+                ctx.moveTo(this.x + 14, this.y + 2);
+                ctx.lineTo(this.x + 32, this.y - 2);
+                ctx.moveTo(this.x + 13, this.y + 7);
+                ctx.lineTo(this.x + 31, this.y + 9);
                 ctx.stroke();
                 
-                // маленькие лапки намёком
-                ctx.fillStyle = this.furColor;
+                // хвост (живой, с волнообразной анимацией)
                 ctx.beginPath();
-                ctx.ellipse(this.x - 12, this.y + 17, 5, 3, 0, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.ellipse(this.x + 12, this.y + 17, 5, 3, 0, 0, Math.PI*2);
-                ctx.fill();
-                
+                ctx.moveTo(this.x - this.size*0.75, this.y + this.size*0.25);
+                const tailOffset = this.tailWag * 8;
+                ctx.quadraticCurveTo(this.x - this.size*0.9 - tailOffset*0.5, this.y + this.size*0.45 + tailOffset,
+                                     this.x - this.size*1.2 + tailOffset, this.y + this.size*0.15 + tailOffset*0.7);
+                ctx.lineWidth = 12;
+                ctx.lineCap = "round";
+                ctx.strokeStyle = this.fur;
+                ctx.stroke();
                 ctx.restore();
             }
         }
         
-        // -------- ИНИЦИАЛИЗАЦИЯ (3 котёнка в случайных местах) --------
-        function initKittens(count) {
-            let newKittens = [];
-            for (let i = 0; i < count; i++) {
-                let x = random(bounds.left + 30, bounds.right - 30);
-                let y = random(bounds.top + 30, bounds.bottom - 30);
-                let kitten = new Kitten(x, y, i);
-                // убедимся, что скорость не нулевая
-                if (Math.abs(kitten.vx) < 0.3) kitten.vx += (Math.random() - 0.5)*0.8;
-                if (Math.abs(kitten.vy) < 0.3) kitten.vy += (Math.random() - 0.5)*0.8;
-                newKittens.push(kitten);
+        // ----- СОЗДАНИЕ ОКРУЖЕНИЯ -----
+        function initSimulation() {
+            cats = [];
+            yarnBalls = [];
+            // стартовые 3 кота с разными характерами
+            const personalities = [
+                {activity: 1.2, curiosity: 1.5, boldness: 1.3},   // шалун
+                {activity: 0.7, curiosity: 0.9, boldness: 0.6},    // ленивый
+                {activity: 1.1, curiosity: 1.1, boldness: 1.0}     // уравновешенный
+            ];
+            for (let i = 0; i < 3; i++) {
+                let x = random(room.left + 50, room.right - 50);
+                let y = random(room.top + 50, room.bottom - 50);
+                cats.push(new SmartCat(i, x, y, personalities[i]));
             }
-            return newKittens;
+            // клубки
+            for (let i = 0; i < 3; i++) {
+                yarnBalls.push(new YarnBall(random(room.left + 40, room.right - 40), random(room.top + 40, room.bottom - 40)));
+            }
         }
         
-        // -------- ОТРИСОВКА КОМНАТЫ (коврик, игрушки, фон) --------
-        function drawRoom() {
-            // пол (деревянный тёплый)
-            ctx.fillStyle = '#E7C9A3';
+        // отрисовка фона комнаты (красивый интерьер)
+        function drawRoomBackground() {
+            ctx.fillStyle = "#efdbc1";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            // текстура досок
-            ctx.strokeStyle = '#C2A070';
-            ctx.lineWidth = 1;
-            for (let i = 0; i < canvas.width; i += 45) {
+            // паркет
+            for (let i = 0; i < canvas.width + 50; i += 55) {
                 ctx.beginPath();
                 ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
+                ctx.lineTo(i + 20, canvas.height);
+                ctx.lineTo(i - 20, canvas.height);
+                ctx.fillStyle = "#dbbc8c";
+                ctx.fill();
+                ctx.strokeStyle = "#c1a06e";
                 ctx.stroke();
             }
-            // коврик с бахромой
-            ctx.fillStyle = '#CD9A5B';
-            ctx.shadowBlur = 6;
-            ctx.shadowColor = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(bounds.left-12, bounds.bottom-70, bounds.right-bounds.left+24, 60);
-            ctx.fillStyle = '#B87C4A';
-            ctx.fillRect(bounds.left-8, bounds.bottom-67, bounds.right-bounds.left+16, 55);
-            ctx.fillStyle = '#E1B282';
-            for(let i=0;i<12;i++) {
-                ctx.fillRect(bounds.left-4 + i*((bounds.right-bounds.left+8)/12), bounds.bottom-12, 6, 12);
-            }
+            // ковер
+            ctx.fillStyle = "#b9804bc9";
+            ctx.shadowBlur = 10;
+            ctx.fillRect(room.left - 18, room.bottom - 85, room.right - room.left + 36, 70);
+            ctx.fillStyle = "#d8985c";
+            ctx.fillRect(room.left - 12, room.bottom - 78, room.right - room.left + 24, 60);
+            ctx.fillStyle = "#f0bc7c";
+            for(let i=0; i<18; i++) ctx.fillRect(room.left - 6 + i*((room.right-room.left+16)/18), room.bottom-18, 8, 14);
             ctx.shadowBlur = 0;
-            
-            // окно с видом
-            ctx.fillStyle = '#AAD0E6';
-            ctx.fillRect(50, 30, 130, 100);
-            ctx.fillStyle = '#F9E7C2';
-            ctx.fillRect(55, 35, 120, 90);
-            ctx.fillStyle = '#7D5E3A';
-            ctx.fillRect(108, 35, 14, 90);
-            ctx.fillRect(55, 75, 120, 10);
-            // облачко за окном
-            ctx.fillStyle = 'white';
+            // окно
+            ctx.fillStyle = "#8fc5e8";
+            ctx.fillRect(40, 35, 150, 110);
+            ctx.fillStyle = "#ffeac2";
+            ctx.fillRect(48, 43, 134, 94);
+            ctx.fillStyle = "#ab7e54";
+            ctx.fillRect(112, 43, 12, 94);
+            ctx.fillRect(48, 86, 134, 12);
+            // облака
+            ctx.fillStyle = "#ffffe8";
             ctx.beginPath();
-            ctx.ellipse(90, 55, 15, 12, 0, 0, Math.PI*2);
-            ctx.ellipse(110, 50, 18, 14, 0, 0, Math.PI*2);
-            ctx.ellipse(130, 55, 13, 11, 0, 0, Math.PI*2);
-            ctx.fill();
-            
-            // клубки ниток (декоративные статичные, но милые)
-            ctx.fillStyle = '#D2691E';
-            ctx.beginPath();
-            ctx.arc(800, 480, 15, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = '#F4A460';
-            ctx.beginPath();
-            ctx.arc(805, 475, 5, 0, Math.PI*2);
-            ctx.fill();
-            ctx.fillStyle = '#8B4513';
-            ctx.beginPath();
-            ctx.arc(880, 500, 12, 0, Math.PI*2);
+            ctx.ellipse(80, 70, 17, 14, 0, 0, Math.PI*2);
+            ctx.ellipse(105, 62, 22, 16, 0, 0, Math.PI*2);
+            ctx.ellipse(128, 70, 16, 13, 0, 0, Math.PI*2);
             ctx.fill();
         }
         
-        // -------- АНИМАЦИОННЫЙ ЦИКЛ --------
-        function animate() {
-            // обновляем позиции котят
-            for (let kitten of kittens) {
-                kitten.update();
-            }
+        // ----- ГЛАВНЫЙ ЦИКЛ -----
+        let lastTimestamp = 0;
+        function gameLoop() {
+            // обновляем позицию мыши (глобальные координаты внутри canvas)
+            // mouseX,mouseY уже обновляются через событие
+            // обновление логики
+            for (let cat of cats) cat.update(cats, yarnBalls, mouseX, mouseY);
+            for (let yarn of yarnBalls) yarn.update();
             
             // отрисовка
-            drawRoom();
-            for (let kitten of kittens) {
-                kitten.draw(ctx);
-            }
+            drawRoomBackground();
+            for (let yarn of yarnBalls) yarn.draw();
+            for (let cat of cats) cat.draw(ctx, mouseX, mouseY);
             
-            // обновление счётчика в интерфейсе
-            document.getElementById('catCount').innerText = kittens.length;
-            
-            requestAnimationFrame(animate);
+            // обновляем UI
+            document.getElementById('catCount').innerText = cats.length;
+            document.getElementById('yarnCount').innerText = yarnBalls.length;
+            const avgActivity = cats.reduce((sum, c) => sum + c.activity, 0) / cats.length;
+            document.getElementById('activityLevel').innerText = Math.floor(avgActivity * 80 + 20) + "%";
+            frames++;
+            requestAnimationFrame(gameLoop);
         }
         
-        // -------- ДОБАВЛЕНИЕ КОТЁНКА (по клику на кнопку) --------
-        function addKitten() {
-            if (kittens.length < 12) {
-                let x = random(bounds.left + 40, bounds.right - 40);
-                let y = random(bounds.top + 40, bounds.bottom - 40);
-                let newCat = new Kitten(x, y, kittens.length);
-                kittens.push(newCat);
-            } else {
-                // визуальный фидбек
-                const btn = document.getElementById('addCatBtn');
-                btn.style.transform = 'scale(0.95)';
-                setTimeout(() => btn.style.transform = '', 150);
-            }
-        }
-        
-        // Запуск и старт
-        kittens = initKittens(3);
-        // Добавим обработчик на кнопку
-        document.getElementById('addCatBtn').addEventListener('click', addKitten);
-        
-        // Запускаем анимацию
-        animate();
-        
-        // Доп. приятность: при клике по комнате все котята немного меняют направление (игра)
-        canvas.addEventListener('click', (e) => {
+        // обработка мыши (для взаимодействия и слежения зрачков)
+        function handleMouseMove(e) {
             const rect = canvas.getBoundingClientRect();
-            const mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
-            const mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
-            for (let kitten of kittens) {
-                // испуганно отпрыгивают от клика
-                const dx = kitten.x - mouseX;
-                const dy = kitten.y - mouseY;
-                const dist = Math.hypot(dx, dy);
-                if (dist < 70 && dist > 0.1) {
-                    kitten.vx += (dx / dist) * 1.2;
-                    kitten.vy += (dy / dist) * 1.2;
-                } else if (dist < 150) {
-                    kitten.vx += (dx / (dist+0.1)) * 0.6;
-                    kitten.vy += (dy / (dist+0.1)) * 0.6;
-                }
-                // ограничим максимум
-                let maxSp = 3.2;
-                if(Math.abs(kitten.vx) > maxSp) kitten.vx = kitten.vx>0? maxSp: -maxSp;
-                if(Math.abs(kitten.vy) > maxSp) kitten.vy = kitten.vy>0? maxSp: -maxSp;
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let canvasX = (e.clientX - rect.left) * scaleX;
+            let canvasY = (e.clientY - rect.top) * scaleY;
+            canvasX = clamp(canvasX, room.left, room.right);
+            canvasY = clamp(canvasY, room.top, room.bottom);
+            mouseX = canvasX;
+            mouseY = canvasY;
+        }
+        
+        function addNewCat() {
+            if (cats.length < 10) {
+                const x = random(room.left + 50, room.right - 50);
+                const y = random(room.top + 50, room.bottom - 50);
+                const newPersonality = {
+                    activity: random(0.5, 1.5),
+                    curiosity: random(0.4, 1.6),
+                    boldness: random(0.3, 1.4)
+                };
+                cats.push(new SmartCat(cats.length, x, y, newPersonality));
             }
-        });
+        }
+        
+        function addYarn() {
+            if (yarnBalls.length < 8) {
+                yarnBalls.push(new YarnBall(random(room.left + 40, room.right - 40), random(room.top + 40, room.bottom - 40)));
+                document.getElementById('yarnCount').innerText = yarnBalls.length;
+            }
+        }
+        
+        canvas.addEventListener('mousemove', handleMouseMove);
+        document.getElementById('spawnCatBtn').addEventListener('click', addNewCat);
+        // двойной клик добавляет клубок
+        canvas.addEventListener('dblclick', addYarn);
+        
+        initSimulation();
+        gameLoop();
     })();
 </script>
 </body>
-</html>
