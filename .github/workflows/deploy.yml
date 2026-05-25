@@ -1,4 +1,4 @@
-name: Deploy to local Nginx
+name: Docker Build and Deploy
 
 on:
   push:
@@ -6,22 +6,20 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted          # ← только так!
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Deploy files directly
+      - name: Build Docker image
+        run: docker build -t mysite:latest .
+
+      - name: Restart container
         run: |
-          # Создаём папку, если её нет (на всякий случай)
-          mkdir -p /var/www/mysite
-
-          # Копируем все файлы из репозитория (точка) в /var/www/mysite
-          # rsync здесь будет работать локально, без SSH
-          rsync -avzr --delete \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            ./ /var/www/mysite/
-
-          # Проверим, что файлы попали на место
-          ls -la /var/www/mysite/
+          # Останавливаем и удаляем старый контейнер, если он существует
+          docker stop mysite-container 2>/dev/null || true
+          docker rm mysite-container 2>/dev/null || true
+          # Запускаем новый в фоне
+          docker run -d --name mysite-container -p 80:80 mysite:latest
+          # Показываем, что контейнер запущен
+          docker ps
